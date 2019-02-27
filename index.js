@@ -1,85 +1,93 @@
-var ffmpeg = require('fluent-ffmpeg');
-var path = require('path');
-var fs = require('fs');
-var config = require('config');
-var url = require('./url');
-var savepath = config.get('savepath');
-var util    = require('util')
+const path = require('path');
+const fs = require('fs');
+const config = require('config');
+const url = require('./url');
+const util    = require('util')
+const { exec } = require('child_process');
 
-var logPath = config.get('logPath');
-var logFile = fs.createWriteStream(logPath, { flags: 'a' })
-
+//get config
+let savepath = config.get('savepath');
+let logPath = config.get('logPath');
+let waitTime = config.get('waitTime');
+//set log file
+let logFile = fs.createWriteStream(logPath+'log.txt', { flags: 'a' })
+let slogFile = fs.createWriteStream(logPath+'slog.txt', { flags: 'a' })
+let errorFile = fs.createWriteStream(logPath+'error.txt', { flags: 'a' })
 console.log = function() {
   logFile.write(util.format.apply(null, arguments) + '\n')
   process.stdout.write(util.format.apply(null, arguments) + '\n')
 }
 
 console.error = function() {
-  logFile.write(util.format.apply(null, arguments) + '\n')
+  errorFile.write(util.format.apply(null, arguments) + '\n')
   process.stderr.write(util.format.apply(null, arguments) + '\n')
 }
+console.slog = function() {
+  slogFile.write(util.format.apply(null, arguments) + '\n')
+}
+
 var recoding = [];
-check();
-async function check(){
+
+let check  = async function(){
     while(1){
-        var channel =JSON.parse(fs.readFileSync(config.get('channelPath'), 'utf8'));
+        //get channel list
+        let channel = JSON.parse(fs.readFileSync(config.get('channel'), 'utf8'));
         for(var index in channel){
-            task(index, channel[index]);
+            checkStatus(index, channel[index]);
         }
-        await new Promise(resolve => setTimeout(resolve, 120*1000))
+        //wait
+        await new Promise(resolve => setTimeout(resolve, waitTime*1000))
     }
 }
 
-async function task(name, channel){
+let checkStatus = async function(name, channel){
     try{
-        var vid = await url.getVid(channel);
-        var info = await url.getM3u8(vid)
         if(recoding.indexOf(name) == -1){
+            let vid = await url.getVid(channel);
+            let info = await url.getInfo(vid);
             recoding.push(name);
             recode(name, info, vid);
         }
-        //console.log(info);
-    } catch(err) {
-        //console.log(err);
+    } catch(err){
+        console.error(err);
     }
 }
-async function recode(name, info, vid){
-    console.log(getTime()+' 开始录制'+name)
+
+let recode = async function(name, info, vid){
+    console.log(`${getTime()} 开始录制 ${name} ${info}`);
     try{
          fs.accessSync(path.join(savepath,name));
     } catch(err) {
         fs.mkdirSync(path.join(savepath,name));
     }
-    var command = ffmpeg(info[1],{ max_reload: "20"})
-    .videoCodec('copy')
-    .audioCodec('copy')
-    .on('error', function(err) {
-        if(err.message == "ffmpeg was killed with signal SIGKILL"){
-            console.log(getTime()+' '+ name+':'+info[0]+'录制结束?.' + err.message);
-        } else {
-            console.log(getTime()+' '+name+':'+info[0]+'录制失败:' + err.message);
+
+    let task = exec(`streamlink https://www.youtube.com/watch?v=${vid} best -o '${path.join(savepath,name+'/'+getTime()+info+'.ts')}'`, (error, stdout, stderr) => {
+        if(error){
+            console.slog(`${getTime()} ${name}:${error}`);
         }
-        var index = recoding.indexOf(name);
+        console.log(`${getTime()} 录制结束 ${name} ${info}`)
+        let index = recoding.indexOf(name);
         if (index > -1) {
             recoding.splice(index, 1);
         }
-    })
-    .save(path.join(savepath,name+'/'+getTime()+info[0]+'.ts'));
-    while(1){
-        var errorNum = 0;
-        await new Promise(resolve => setTimeout(resolve, 5*1000))
-        var status = await url.status(vid);
-        if(status != 'ok') errorNum++;
-        else errorNum = 0;
-        if(status == 'live_stream_offline' || errorNum > 20){
-            command.kill();
-            break;
+    });
+    task.stdout.on('data', (data) => {
+        let regExp = /\[cli\]\[(.*?)\](.*)/;
+        let res = regExp.exec(data);
+        if(res){
+            if(res[1] == 'info') console.slog(`${getTime()} ${name}:${res[2]}`);
+            if(res[1] == 'error') console.error(`${getTime()} ${name}:${res[2]}`);
         }
-    }
+    });
 
+    task.stderr.on('data', (data) => {
+        console.error(`${getTime()} ${name} stderr: ${data}`);
+    });
 }
 
-function getTime(){
+
+
+let getTime = () => {
     var date = new Date();
     var year = date.getFullYear();
     var month = date.getMonth()+1;
@@ -94,3 +102,6 @@ function getTime(){
     if (second >= 0 && second <= 9) second = "0" + second;
     return year+'-'+month+'-'+day+' '+hour+''+minute+''+second;
 }
+
+
+check();

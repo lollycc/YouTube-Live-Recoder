@@ -1,78 +1,49 @@
-var rp = require('request-promise');
-function getVid(channel){
-    var options = {
+const rp = require('request-promise');
+
+let getVid = (channel) => {
+    let options = {
         uri: 'https://www.youtube.com/channel/'+channel,
         headers: {
             'accept-language': 'en-US,en;',
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
         }
     };
-    return new Promise(function(resolve, reject){
-        rp(options).then(function (htmlString) {
+    return new Promise((resolve, reject) => {
+        rp(options).then((htmlString) => {
             if(htmlString.indexOf("LIVE NOW") > 0){
-                var regExp = /videoId":"(.*?)".*?LIVE NOW/;
-                var res = regExp.exec(htmlString);
+                let regExp = /videoId":"(.*?)".*?LIVE NOW/;
+                let res = regExp.exec(htmlString);
                 resolve(res[1]);
-            } else {
-                reject('no live.');
             }
+        }).catch(function (err) {
+            consloe.err(`${channel}: ${err}`);
         });
     });
 }
-function status(vid){
-    var options = {
-        uri: 'https://www.youtube.com/heartbeat?video_id='+vid,
-        headers: {
-            'accept-language': 'en-US,en;',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
-        },
-        json: true
-    };
-    return new Promise(function(resolve, reject){
-        rp(options).then(function (json) {
-            resolve(json.status);
-        });
-    });
-}
-function getM3u8(vid){
-    var options = {
+let getInfo = (vid) => {
+    let options = {
         uri: 'https://www.youtube.com/watch?v='+vid,
         headers: {
             'accept-language': 'en-US,en;',
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
         }
     };
-    return new Promise(function(resolve, reject){
-        rp(options).then(function (htmlString) {
+    return new Promise((resolve, reject) => {
+        rp(options).then((htmlString) => {
             if(htmlString.indexOf("hlsManifestUrl") > 0){
-                var regExp = /"title":"(.*?)",/;
-                var res = regExp.exec(htmlString);
-                var title = res[1].replace(/[~!@#$%^&*，。；‘’\\{\[\]}|\/]/g, "");
-                regExp = /hlsManifestUrl\\":\\"(.*?m3u8)/;
-                res = regExp.exec(htmlString);
-                var m3u8List = res[1].replace(/\\/g,"");
-                rp(m3u8List).then(function(body){
-                    var reg = /(http.*?m3u8)/g;
-                    var m3u8 = "";   
-                    while(res = reg.exec(body)){   
-                        m3u8 = res;
-                    }
-                    if(m3u8[1]){
-                        resolve([title, m3u8[1]]);
-                    } else {
-                        reject('error to get m3u8. vid:'+vid);
-                    }
-                    
-                });
+                let regExp = /"title":"(.*?)",/;
+                let res = regExp.exec(htmlString);
+                let title = res[1].replace(/[\\/:*?"<>|\r\n]/g, "");
+                resolve(title);
             } else {
-                reject('error to get m3u8. vid:'+vid);
+                reject('error to get info. vid:'+vid);
             }
+        }).catch(function (err) {
+            consloe.err(`${vid}: ${err}`);
         });
     });
 }
-
 module.exports = {
     getVid,
-    getM3u8,
-    status
+    getInfo
 }
