@@ -60,16 +60,17 @@ let recode = async function(name, info, vid){
     } catch(err) {
         fs.mkdirSync(path.join(savepath,name));
     }
-
-    let task = exec(`streamlink https://www.youtube.com/watch?v=${vid} best -o '${path.join(savepath,name+'/'+getTime()+info+'.ts')}'`, (error, stdout, stderr) => {
+    let status = true;
+    let task = exec(`streamlink https://www.youtube.com/watch?v=${vid} best -o "${path.join(savepath,name+'/'+getTime()+info+'.ts')}"`, (error, stdout, stderr) => {
         if(error){
             console.slog(`${getTime()} ${name}:${error}`);
         }
-        console.log(`${getTime()} 录制结束 ${name} ${info}`)
+        console.log(`${getTime()} 录制结束 ${name} ${info}`);
         let index = recoding.indexOf(name);
         if (index > -1) {
             recoding.splice(index, 1);
         }
+        status = false;
     });
     task.stdout.on('data', (data) => {
         let regExp = /\[cli\]\[(.*?)\](.*)/;
@@ -83,6 +84,18 @@ let recode = async function(name, info, vid){
     task.stderr.on('data', (data) => {
         console.error(`${getTime()} ${name} stderr: ${data}`);
     });
+
+    while(1){
+        if(!status) break;
+        var errorNum = 0;
+        await new Promise(resolve => setTimeout(resolve, 5*1000))
+        var hb = await url.hb(vid);
+        if(hb.status == 'live_stream_offline' && hb.reason == 'This live event has ended.'){
+            task.kill('SIGKILL');
+            console.log(`${getTime()} ${name} ${info} killed`);
+            status = false;
+        }
+    }
 }
 
 
