@@ -20,7 +20,7 @@ console.log = function() {
 
 console.error = function() {
   errorFile.write(util.format.apply(null, arguments) + '\n')
-  process.stderr.write(util.format.apply(null, arguments) + '\n')
+  //process.stderr.write(util.format.apply(null, arguments) + '\n')
 }
 console.slog = function() {
   slogFile.write(util.format.apply(null, arguments) + '\n')
@@ -43,18 +43,17 @@ let check  = async function(){
 let checkStatus = async function(name, channel){
     try{
         if(recoding.indexOf(name) == -1){
-            let vid = await url.getVid(channel);
-            let info = await url.getInfo(vid);
+            let info = await url.getInfo(channel);
             recoding.push(name);
-            recode(name, info, vid);
+            recode(name, info.title, info.vid);
         }
     } catch(err){
-        console.error(err);
+        console.log(err);
     }
 }
 
 let recode = async function(name, info, vid){
-    console.log(`${getTime()} 开始录制 ${name} ${info}`);
+    console.log(`${getTime()} 开始录制 (${vid}) ${name} ${info}`);
     try{
          fs.accessSync(path.join(savepath,name));
     } catch(err) {

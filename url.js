@@ -1,69 +1,74 @@
 const rp = require('request-promise');
-
-let getVid = (channel) => {
+const fs = require('fs');
+let ips = fs.readFileSync('./config/ips.txt', 'utf8').split(/[(\r\n)\r\n]+/);
+let items = [];
+let getItems = (obj) => {
+    for(let i in obj){
+        if(i == 'items'){
+            for(let j in obj[i]){
+                items.push(obj[i][j]);
+            }
+        } else if(typeof obj[i] === "object"){
+            getItems(obj[i]);
+        }
+    }
+}
+let getInfo = (channel) => {
+    let ip = ips[Math.round(Math.random() * (ips.length-1))];
     let options = {
-        uri: 'https://www.youtube.com/channel/'+channel,
+        uri: 'https://'+ip+'/channel/'+channel,
         headers: {
+            'Host': 'www.youtube.com',
             'accept-language': 'en-US,en;',
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
         }
     };
     return new Promise((resolve, reject) => {
         rp(options).then((htmlString) => {
-            if(htmlString.indexOf("LIVE NOW") > 0){
-                let regExp = /videoId":"(.*?)".*?LIVE NOW/;
-                let res = regExp.exec(htmlString);
-                resolve(res[1]);
+            let regExp = /window\["ytInitialData"\] =(.*);/;
+            let res = regExp.exec(htmlString);
+            let data = JSON.parse(res[1]);
+            items = [];
+            getItems(data);
+            for(let i in items){
+                if(items[i].videoRenderer){
+                    if(items[i].videoRenderer.badges){
+                        if(items[i].videoRenderer.badges[0].metadataBadgeRenderer.label == 'LIVE NOW'){
+                            let videoId = items[i].videoRenderer.videoId;
+                            let title = items[i].videoRenderer.title.simpleText.replace(/[\\/:*?"<>|\r\n]/g, "");
+                            resolve({"vid":videoId, "title":title});
+                            break;
+                        }
+                    }
+                    
+                }
+                
             }
         }).catch((err) => {
             console.error(`${channel}: ${err}`);
         });
     });
 }
-let getInfo = (vid) => {
+function hb(vid){
+    let ip = ips[Math.round(Math.random() * (ips.length-1))];
     let options = {
-        uri: 'https://www.youtube.com/watch?v='+vid,
+        uri: 'https://'+ip+'/heartbeat?video_id='+vid,
         headers: {
+            'Host': 'www.youtube.com',
             'accept-language': 'en-US,en;',
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
         }
     };
     return new Promise((resolve, reject) => {
-        rp(options).then((htmlString) => {
-            if(htmlString.indexOf("hlsManifestUrl") > 0){
-                let regExp = /"title":"(.*?)"}?,/;
-                let res = regExp.exec(htmlString);
-                let title = res[1].replace(/[\\/:*?"<>|\r\n]/g, "");
-                resolve(title);
-            } else {
-                reject('error to get info. vid:'+vid);
-            }
-        }).catch((err) => {
-            console.error(`${vid}: ${err}`);
-        });
-    });
-}
-
-function hb(vid){
-    var options = {
-        uri: 'https://www.youtube.com/heartbeat?video_id='+vid,
-        headers: {
-            'accept-language': 'en-US,en;',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
-        },
-        json: true
-    };
-    return new Promise((resolve, reject) => {
         rp(options).then((json) => {
             resolve(json);
         }).catch((err) => {
-            console.error(`${vid}: ${err}`);
+            console.error(`${vid} heartbeat error: ${err}`);
         });
     });
 }
 
 module.exports = {
-    getVid,
     getInfo,
     hb
 }
