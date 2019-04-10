@@ -30,6 +30,7 @@ let getInfo = (channel) => {
             let data = JSON.parse(res[1]);
             items = [];
             getItems(data);
+
             for(let i in items){
                 if(items[i].videoRenderer){
                     if(items[i].videoRenderer.badges){
@@ -40,9 +41,17 @@ let getInfo = (channel) => {
                             break;
                         }
                     }
-                    
                 }
-                
+                if(items[i].gridVideoRenderer){
+                    if(items[i].gridVideoRenderer.badges){
+                        if(items[i].gridVideoRenderer.badges[0].metadataBadgeRenderer.label == 'LIVE NOW'){
+                            let videoId = items[i].gridVideoRenderer.videoId;
+                            let title = items[i].gridVideoRenderer.title.simpleText.replace(/[\\/:*?"<>|\r\n]/g, "");
+                            resolve({"vid":videoId, "title":title});
+                            break;
+                        }
+                    }
+                }
             }
         }).catch((err) => {
             console.error(`${channel}: ${err}`);
