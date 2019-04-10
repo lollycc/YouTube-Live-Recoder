@@ -44,8 +44,12 @@ let checkStatus = async function(name, channel){
     try{
         if(recoding.indexOf(name) == -1){
             let info = await url.getInfo(channel);
-            recoding.push(name);
-            recode(name, info.title, info.vid);
+            let hb = await url.hb(info.vid);
+            //console.log(hb.status);
+            if(hb.status == "ok"){
+                recoding.push(name);
+                recode(name, info.title, info.vid);
+            }
         }
     } catch(err){
         console.log(err);

@@ -70,7 +70,7 @@ function hb(vid){
     };
     return new Promise((resolve, reject) => {
         rp(options).then((json) => {
-            resolve(json);
+            resolve(JSON.parse(json));
         }).catch((err) => {
             console.error(`${vid} heartbeat error: ${err}`);
         });
