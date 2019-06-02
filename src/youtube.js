@@ -1,18 +1,6 @@
 const rp = require('request-promise');
 const fs = require('fs');
-let ips = fs.readFileSync('./config/ips.txt', 'utf8').split(/[(\r\n)\r\n]+/);
-let items = [];
-let getItems = (obj) => {
-    for(let i in obj){
-        if(i == 'items'){
-            for(let j in obj[i]){
-                items.push(obj[i][j]);
-            }
-        } else if(typeof obj[i] === "object"){
-            getItems(obj[i]);
-        }
-    }
-}
+let ips = fs.readFileSync('./data/ips.txt', 'utf8').split(/[(\r\n)\r\n]+/);
 let getInfo = (channel) => {
     let ip = ips[Math.round(Math.random() * (ips.length-1))];
     let options = {
