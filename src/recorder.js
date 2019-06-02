@@ -1,6 +1,8 @@
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const os = require('os');
+const mv = require('mv');
 
 const channel = require('./channel');
 const youtube = require('./youtube');
@@ -31,7 +33,7 @@ let checkStatus = async function(vtuber){
             if(null != vtuber.youtube){
                 let info = await youtube.getInfo(vtuber.youtube);
                 let hb = await youtube.hb(info.vid);
-                if(hb.status == "ok"){
+                if(hb.status == "ok" && hb.liveStreamability){
                     let data = await history.getLast(vtuber.id);
                     //console.log(data);
                     if(!(data && data.vid == info.vid && data.status == 1)){
@@ -84,7 +86,7 @@ let recode = async function(channelId, name, type, info, vid){
         }
         console.log(`${getTime()} 录制结束 ${name} ${info}`);
         history.recordEnd(channelId, startTime);
-        fs.rename(tempFilename, filename, (err)=>{
+        mv(tempFilename, filename, (err)=>{
             if(err){
                 console.error(err);
             }
@@ -102,7 +104,11 @@ let recode = async function(channelId, name, type, info, vid){
         await new Promise(resolve => setTimeout(resolve, 5*1000))
         var hb = await youtube.hb(vid);
         if(hb.status == 'live_stream_offline' && hb.reason == 'This live event has ended.'){
-            tasks[channelId].kill();
+            if(os.platform() === 'win32'){
+                exec('taskkill /pid ' + tasks[channelId].pid + ' /T /F')
+            }else{
+                tasks[channelId].kill();  
+            }
             status = false;
         }
     }
@@ -113,7 +119,11 @@ let stop = async function(channelId) {
     let r = [];
     if(data){
         if(tasks[channelId]){
-            tasks[channelId].kill();
+            if(os.platform() === 'win32'){
+                exec('taskkill /pid ' + tasks[channelId].pid + ' /T /F')
+            }else{
+                tasks[channelId].kill();  
+            }
             let status = history.setStopSign(channelId, data.start_time);
             return {'status':'ok'};
             return r;

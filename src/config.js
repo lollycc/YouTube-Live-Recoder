@@ -17,7 +17,7 @@ let get = (name) =>{
 
 let set = async function(name, value){
     let check = await get(name);
-    if(!check){
+    if(check === false){
         return new Promise(resolve => db.run(`insert into config values ('${name}', '${value}')`, resolve));
     }
     return new Promise(resolve => db.run(`update config set value = '${value}' where name = '${name}'`, resolve));

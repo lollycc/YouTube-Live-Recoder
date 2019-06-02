@@ -73,6 +73,7 @@ app.post('/saveConfig', async function(req,res){
     for(var i=0;i<data.name.length;i++){
         let res = await config.set(data.name[i], data.value[i]);
         if(res){
+            console.log(res);
             ret.status = 'error';
         }
     }
