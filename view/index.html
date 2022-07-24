@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<head>
+	<meta charset="UTF-8">
+	<title>Live Recorder</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+	 crossorigin="anonymous">
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+	 crossorigin="anonymous"></script>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
+	 crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+	 crossorigin="anonymous"></script>
+</head>
+
+<body>
+	<div class="container">
+
+		<h1>
+			Live Recorder
+		</h1>
+
+		<nav>
+			<div class="nav nav-tabs" id="nav-tab" role="tablist">
+				<a class="nav-item nav-link active" id="nav-main" data-toggle="tab" href="#nav-home" role="tab" aria-controls="nav-home"
+				 aria-selected="true">main</a>
+				<a class="nav-item nav-link" id="nav-list" data-toggle="tab" href="#nav-profile" role="tab" aria-controls="nav-profile"
+				 aria-selected="false">list</a>
+				<a class="nav-item nav-link" id="nav-setting" data-toggle="tab" href="#nav-contact" role="tab" aria-controls="nav-contact"
+				 aria-selected="false">setting</a>
+			</div>
+		</nav>
+
+		<div class="tab-content" id="nav-tabContent">
+			<div class="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">
+				<table id = "now" class="table">
+					<tr>
+						<th scope="col">title</th>
+						<th scope="col">channel</th>
+						<th scope="col">start time</th>
+						<th scope="col">type</th>
+						<th scope="col"></th>
+					</tr>
+				</table>
+			</div>
+
+			<div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab">
+				<table id="channel" class="table">
+					<tr>
+						<th scope="col">id</th>
+						<th scope="col">name</th>
+						<th scope="col">youtube</th>
+						<th scope="col">twitcasting</th>
+						<th scope="col">bilibili</th>
+						<th scope="col"><button id="add-channel-btn" class="btn btn-success" type="button">add</button></th>
+					</tr>
+					<tr id="add-aera">
+						<td></td>
+						<td><input type="text" id="add-name"></td>
+						<td><input type="text" id="add-youtube"></td>
+						<td><input type="text" id="add-twicasting"></td>
+						<td><input type="text" id="add-bilibili"></td>
+						<td><button id="add-submit" class="btn btn-success" type="button">submit</button></td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab">
+				<table id="config" class="table">
+					<tr>
+						<th scope="col">name</th>
+						<th scope="col">value</th>
+					</tr>
+					<tr class="config-list">
+						<td><input type="hidden" class="config-name"></td>
+						<td><input type="text" class="config-value"></td>
+					</tr>
+				</table>
+				<button id="config-save" class="btn btn-success" type="button">save</button>
+			</div>
+		</div>
+
+	</div>
+
+<script>
+function Conversiontime(timestamp) {
+    var date = new Date(timestamp);
+    Y = date.getFullYear() + '-';
+    M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+    D = (date.getDate()<10?'0'+(date.getDate()):date.getDate()) + ' ';
+    h = (date.getHours()<10?'0'+(date.getHours()):date.getHours()) + ':';
+    m = (date.getMinutes()<10?'0'+(date.getMinutes()):date.getMinutes())+':';
+    s = (date.getSeconds()<10?'0'+(date.getSeconds()):date.getSeconds());
+    return Y+M+D+h+m+s;
+}
+function getRecordingList(){
+	$(".now-list").remove();
+	$.getJSON('http://localhost:3001/recording', function(data){
+		for(i=0;i<data.length;i++){
+			var row = $(`
+				<tr channel-id="${data[i].id}" class="now-list">
+					<td>${data[i].title}</td>
+					<td>${data[i].name}</td>
+					<td>${Conversiontime(data[i].start_time)}</td>
+					<td>${data[i].type}</td>
+					<td><button class="btn btn-danger record-stop" type="button">stop</button></td>
+				</tr>
+			`);
+			$('#now').append(row);
+		}
+		$('.record-stop').click(function(){
+			var id = $(this).parent().parent().attr('channel-id');
+			$.getJSON('http://localhost:3001/stop?id='+id, function(data){
+				setTimeout("getRecordingList()","2000");
+			});
+		});
+	});
+
+}
+function getAllChannel(){
+	$(".channel-list").remove();
+	$.getJSON('http://localhost:3001/getAllChannel', function(data){
+		for(i=0;i<data.length;i++){
+			var row = $(`
+				<tr channel-id="${data[i].id}" class="channel-list">
+					<td>${data[i].id}</td>
+					<td>${data[i].name}</td>
+					<td>${data[i].youtube}</td>
+					<td>${data[i].twitcasting}</td>
+					<td>${data[i].bilibili}</td>
+					<td><button class="btn btn-success" type="button submit">edit</button></td>
+					<td><button class="btn btn-danger list-del-btn" type="button submit">delete</button></td>
+				</tr>
+				`);
+			$('#channel').append(row);
+		}
+		
+		$('.list-del-btn').click(function(){
+			var id = $(this).parent().parent().attr('channel-id');
+			$.getJSON('http://localhost:3001/delChannel?id='+id, function(data){
+				getAllChannel();
+			});
+		});
+
+	});
+}
+function getAllConfig(){
+	$('.config-list').remove();
+	$.getJSON('http://localhost:3001/configGetAll', function(data){
+		for(i=0;i<data.length;i++){
+			var row = $(`
+				<tr class="config-list">
+					<td>${data[i].name}<input type="hidden" class="config-name" value="${data[i].name}"></td>
+					<td><input type="text" class="config-value" value="${data[i].value}"></td>
+				</tr>
+			`);
+			$('#config').append(row);
+		}
+	});
+}
+$().ready(function(){
+	getRecordingList();
+	$('#add-aera').hide();
+	$('#nav-list').click(getAllChannel);
+	$('#nav-main').click(getRecordingList);
+	$('#nav-setting').click(getAllConfig);
+	$('#add-channel-btn').click(function(){
+		$('#add-aera').show();
+	});
+	$('#add-submit').click(function(){
+		var name = $('#add-name').val();
+		var youtube = $('#add-youtube').val();
+		var twitcasting = $('#add-twicasting').val();
+		var bilibili = $('#add-bilibili').val();
+		var url = `http://localhost:3001/addChannel?name=${name}&youtube=${youtube}&twitcasting=${twitcasting}&bilibili=${bilibili}`;
+		$.getJSON(url, function(){
+			getAllChannel();
+			$('#add-name').val('');
+			$('#add-youtube').val('');
+			$('#add-twicasting').val('');
+			$('#add-bilibili').val('');
+			$('#add-aera').hide();
+		})
+	});
+	$('#config-save').click(function(){
+		var name = [];
+		var value = [];
+		var o_name = $('.config-name');
+		var o_value = $('.config-value');
+		for(var i=0;i<o_name.length;i++){
+			name[i] = o_name[i].value;
+		}
+		for(var i=0;i<o_value.length;i++){
+			value[i] = o_value[i].value;
+		}
+		$.post('http://localhost:3001/saveConfig', {name:name, value:value}, function(data){
+			if(data.status == 'error'){
+				console.log('save error');
+			}
+		});
+	});
+});
+</script>
+</body>
+
+</html>
